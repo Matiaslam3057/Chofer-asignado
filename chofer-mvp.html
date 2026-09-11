@@ -1,1 +1,657 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chofer Asignado — MVP</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
+:root{
+  --asphalt-dark:#12161A;
+  --asphalt:#1B2126;
+  --asphalt-light:#262E35;
+  --line-white:#EDEFEA;
+  --line-muted:#8B949C;
+  --vest-lime:#C9FF3F;
+  --cone-orange:#FF6A38;
+  --danger:#FF5C5C;
+  --border:#333C43;
+  --radius:14px;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{background:var(--asphalt-dark); color:var(--line-white); font-family:'Inter',sans-serif; min-height:100vh; display:flex; justify-content:center;}
+#app{width:100%; max-width:460px; min-height:100vh; background:var(--asphalt); display:flex; flex-direction:column; position:relative; border-left:1px solid var(--border); border-right:1px solid var(--border);}
+
+header.top{padding:20px 20px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px;}
+.logo-mark{width:38px; height:38px; border-radius:10px; background:var(--vest-lime); display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.logo-mark svg{width:22px; height:22px;}
+.brand{font-family:'Oswald',sans-serif; font-weight:600; font-size:18px; line-height:1.1;}
+.brand span{color:var(--vest-lime);}
+.brand small{display:block; font-family:'Inter',sans-serif; font-weight:400; font-size:11px; color:var(--line-muted); margin-top:2px;}
+
+main{flex:1; padding:18px; padding-bottom:96px; overflow-y:auto;}
+.view{display:none; animation:fade .25s ease;}
+.view.active{display:block;}
+@keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+h2.section-title{font-family:'Oswald',sans-serif; font-weight:600; font-size:21px; margin-bottom:4px;}
+p.section-sub{color:var(--line-muted); font-size:13px; margin-bottom:18px; line-height:1.4;}
+
+.field{margin-bottom:13px;}
+.field label{display:block; font-size:12px; color:var(--line-muted); margin-bottom:6px;}
+.field select, .field input[type=text], .field input[type=number]{
+  width:100%; background:var(--asphalt-light); border:1px solid var(--border); color:var(--line-white);
+  padding:12px 13px; border-radius:10px; font-size:14px; font-family:'Inter',sans-serif;
+}
+.field select:focus, .field input:focus{outline:2px solid var(--vest-lime); outline-offset:1px;}
+
+.gps-btn{width:100%; display:flex; align-items:center; gap:9px; background:var(--asphalt-light); border:1px solid var(--vest-lime); color:var(--vest-lime); padding:12px 13px; border-radius:10px; font-size:13.5px; font-weight:500; cursor:pointer;}
+.gps-btn.located{border-color:var(--border); color:var(--line-white);}
+#gpsStatus, #gpsStatusChofer{font-size:11.5px; color:var(--line-muted); margin-top:6px;}
+
+.radius-warning{display:none; background:rgba(255,92,92,0.12); border:1px solid var(--danger); color:var(--danger); font-size:12px; line-height:1.5; padding:11px 13px; border-radius:10px; margin-bottom:14px;}
+.radius-warning.show{display:block;}
+
+.price-card{background:var(--asphalt-light); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin:16px 0;}
+.price-row{display:flex; justify-content:space-between; font-size:13px; color:var(--line-muted); padding:5px 0;}
+.price-row.total{border-top:1px solid var(--border); margin-top:6px; padding-top:11px; font-size:16px; color:var(--line-white); font-family:'Oswald',sans-serif; font-weight:600;}
+.price-row.total span:last-child{color:var(--vest-lime);}
+.price-row span:last-child{color:var(--line-white);}
+
+.btn-primary{width:100%; background:var(--vest-lime); color:var(--asphalt-dark); border:none; padding:15px; border-radius:12px; font-family:'Oswald',sans-serif; font-weight:600; font-size:15px; cursor:pointer;}
+.btn-primary:active{transform:scale(0.98);}
+.btn-primary:disabled{background:var(--asphalt-light); color:var(--line-muted); cursor:not-allowed;}
+.btn-ghost{width:100%; background:transparent; border:1px solid var(--border); color:var(--line-muted); padding:13px; border-radius:12px; font-size:13.5px; cursor:pointer; margin-top:10px;}
+
+.status-card{background:var(--asphalt-light); border:1px solid var(--vest-lime); border-radius:var(--radius); padding:16px; margin-top:16px;}
+.status-card .tag{font-size:11px; color:var(--vest-lime); text-transform:none; margin-bottom:4px;}
+.status-card .headline{font-family:'Oswald',sans-serif; font-weight:600; font-size:16px;}
+.status-card .sub{font-size:12.5px; color:var(--line-muted); margin-top:4px;}
+
+.ride-card{background:var(--asphalt-light); border:1px solid var(--border); border-radius:var(--radius); padding:15px; margin-bottom:12px;}
+.ride-card .top-row{display:flex; justify-content:space-between; align-items:flex-start;}
+.ride-card .fare{font-family:'Oswald',sans-serif; font-weight:600; color:var(--vest-lime); font-size:16px;}
+.ride-card .addr{font-size:13px; margin-top:8px; line-height:1.6;}
+.ride-card .addr .from::before{content:"● "; color:var(--vest-lime);}
+.ride-card .addr .to::before{content:"● "; color:var(--cone-orange);}
+.ride-card .meta{font-size:11px; color:var(--line-muted); margin-top:2px;}
+.btn-accept{width:100%; margin-top:12px; background:var(--vest-lime); color:var(--asphalt-dark); border:none; padding:11px; border-radius:9px; font-weight:600; font-size:13px; cursor:pointer;}
+.empty-state{text-align:center; padding:30px 10px; color:var(--line-muted); font-size:13px; line-height:1.6;}
+
+.toggle-row{display:flex; align-items:center; justify-content:space-between; background:var(--asphalt-light); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:16px;}
+.toggle-row .lbl{font-family:'Oswald',sans-serif; font-weight:600; font-size:14px;}
+.toggle-row .lbl small{display:block; font-family:'Inter',sans-serif; font-weight:400; color:var(--line-muted); font-size:11px; margin-top:2px;}
+.switch{width:46px; height:26px; background:var(--border); border-radius:20px; position:relative; cursor:pointer; flex-shrink:0;}
+.switch.on{background:var(--vest-lime);}
+.switch .knob{position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:var(--line-white); transition:left .18s ease;}
+.switch.on .knob{left:23px; background:var(--asphalt-dark);}
+
+.earnings-strip{display:flex; justify-content:space-between; background:var(--asphalt-light); border-radius:var(--radius); padding:15px 16px; margin-bottom:18px;}
+.earnings-strip div{text-align:center;}
+.earnings-strip .num{font-family:'Oswald',sans-serif; font-weight:600; font-size:18px; color:var(--vest-lime);}
+.earnings-strip .lbl{font-size:10.5px; color:var(--line-muted); margin-top:3px;}
+
+.config-row{display:flex; justify-content:space-between; align-items:center; padding:13px 0; border-bottom:1px solid var(--border);}
+.config-row:last-child{border-bottom:none;}
+.config-row .label{font-size:13.5px;}
+.config-row .label small{display:block; color:var(--line-muted); font-size:11px; margin-top:2px;}
+.config-row input{width:85px; background:var(--asphalt-light); border:1px solid var(--border); color:var(--vest-lime); font-family:'Oswald',sans-serif; font-weight:600; text-align:right; padding:8px 9px; border-radius:8px; font-size:13.5px;}
+.save-note{font-size:11px; color:var(--line-muted); margin-top:8px; text-align:center;}
+
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;}
+.stat-box{background:var(--asphalt-light); border-radius:12px; padding:13px;}
+.stat-box .num{font-family:'Oswald',sans-serif; font-weight:600; font-size:19px;}
+.stat-box .lbl{font-size:10.5px; color:var(--line-muted); margin-top:3px;}
+
+.divider-label{font-size:11.5px; color:var(--line-muted); margin:20px 0 8px;}
+
+nav.tabbar{position:absolute; bottom:0; left:0; right:0; display:flex; background:var(--asphalt); border-top:1px solid var(--border); padding:9px 8px calc(9px + env(safe-area-inset-bottom));}
+nav.tabbar button{flex:1; background:none; border:none; color:var(--line-muted); font-size:11px; display:flex; flex-direction:column; align-items:center; gap:4px; padding:5px 0; cursor:pointer;}
+nav.tabbar button svg{width:19px; height:19px; stroke:var(--line-muted);}
+nav.tabbar button.active{color:var(--vest-lime);}
+nav.tabbar button.active svg{stroke:var(--vest-lime);}
+
+.loading-dot{display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--vest-lime); margin-right:6px; animation:pulse 1.2s infinite;}
+@keyframes pulse{0%,100%{opacity:0.3;} 50%{opacity:1;}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="top">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#12161A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="5.5" cy="17.5" r="3.5"></circle><circle cx="18.5" cy="17.5" r="3.5"></circle>
+        <path d="M15 6a1 1 0 100-2 1 1 0 000 2z" fill="#12161A"></path>
+        <path d="M12 17.5V14l-3-3 4-3 2 3h3"></path>
+      </svg>
+    </div>
+    <div class="brand">Chofer <span>Asignado</span><small>MVP — datos compartidos en vivo</small></div>
+  </header>
+
+  <main>
+
+    <!-- ==================== CLIENTE ==================== -->
+    <section class="view active" id="view-cliente">
+      <h2 class="section-title">Pide tu chofer</h2>
+      <p class="section-sub">Tu auto se queda contigo. El chofer llega en bicicleta plegable, la guarda en tu baúl y te lleva a casa.</p>
+
+      <div class="field">
+        <label>Tu nombre</label>
+        <input type="text" id="clienteNombre" placeholder="Ej. Ana">
+      </div>
+
+      <div class="field">
+        <label>Punto de partida</label>
+        <button type="button" id="btnGPS" class="gps-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg>
+          <span id="gpsLabel">Usar mi ubicación (GPS)</span>
+        </button>
+        <div id="gpsStatus"></div>
+      </div>
+
+      <div class="field">
+        <label>Destino</label>
+        <select id="destino">
+          <option value="0">Palm Harbor</option>
+          <option value="1">Cypress Knoll</option>
+          <option value="2">Pine Grove</option>
+          <option value="3">Indian Trails</option>
+          <option value="4">Seminole Woods</option>
+          <option value="5">Daytona Beach (fuera del radio, ~30 mi)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Distancia estimada</label>
+        <input type="text" id="distanciaTxt" readonly>
+      </div>
+
+      <div id="radiusWarning" class="radius-warning">
+        Este destino está fuera del radio de servicio (máximo 20 millas). No podemos asignar un chofer para este viaje.
+      </div>
+
+      <div class="price-card">
+        <div class="price-row"><span>Tarifa base</span><span id="pBase">$0</span></div>
+        <div class="price-row"><span>Distancia (<span id="pMillas">0</span> mi)</span><span id="pDistancia">$0</span></div>
+        <div class="price-row"><span>Cargo por servicio</span><span id="pServicio">$0</span></div>
+        <div class="price-row total"><span>Total a pagar</span><span id="pTotal">$0</span></div>
+      </div>
+
+      <button class="btn-primary" id="btnSolicitar">Solicitar chofer asignado</button>
+
+      <div class="status-card" id="clienteStatusCard" style="display:none;">
+        <div class="tag" id="clienteStatusTag"><span class="loading-dot"></span>Buscando chofer disponible...</div>
+        <div class="headline" id="clienteStatusHeadline">Tu solicitud está activa</div>
+        <div class="sub" id="clienteStatusSub">Te avisamos aquí en cuanto un chofer la acepte.</div>
+      </div>
+      <button class="btn-ghost" id="btnCancelarSolicitud" style="display:none;">Cancelar solicitud</button>
+    </section>
+
+    <!-- ==================== CHOFER ==================== -->
+    <section class="view" id="view-chofer">
+      <h2 class="section-title">Panel del chofer</h2>
+      <p class="section-sub">Actívate para recibir solicitudes cerca de tu ubicación real.</p>
+
+      <div class="field">
+        <label>Tu nombre</label>
+        <input type="text" id="choferNombre" placeholder="Ej. Miguel">
+      </div>
+
+      <div class="toggle-row">
+        <div class="lbl">Disponible ahora<small id="gpsStatusChofer">Actívate para compartir tu ubicación</small></div>
+        <div class="switch" id="switchDisponible"><div class="knob"></div></div>
+      </div>
+
+      <div class="earnings-strip">
+        <div><div class="num" id="choferGanadoHoy">$0</div><div class="lbl">Ganado hoy</div></div>
+        <div><div class="num" id="choferViajesHoy">0</div><div class="lbl">Viajes</div></div>
+        <div><div class="num">4.9</div><div class="lbl">Calificación</div></div>
+      </div>
+
+      <div id="listaSolicitudes"></div>
+    </section>
+
+    <!-- ==================== ADMIN ==================== -->
+    <section class="view" id="view-admin">
+      <h2 class="section-title">Configuración y panel</h2>
+      <p class="section-sub">Ajusta tarifas y mira los viajes en vivo — se guarda para todos los que abran esta app.</p>
+
+      <div class="price-card" style="margin-top:0;">
+        <div style="font-family:'Oswald',sans-serif;font-weight:600;font-size:13.5px;margin-bottom:8px;">Diagnóstico de guardado</div>
+        <div id="diagResultado" style="font-size:12.5px;color:var(--line-muted);line-height:1.7;">Presiona el botón para probar.</div>
+        <button class="btn-ghost" id="btnDiagnostico" style="margin-top:10px;">Probar guardado</button>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-box"><div class="num" id="statViajesHoy">0</div><div class="lbl">Viajes hoy</div></div>
+        <div class="stat-box"><div class="num" id="statChoferesOnline">0</div><div class="lbl">Choferes activos</div></div>
+        <div class="stat-box"><div class="num" id="statIngresos">$0</div><div class="lbl">Ingresos hoy</div></div>
+        <div class="stat-box"><div class="num" id="statMargen">0%</div><div class="lbl">Margen del negocio</div></div>
+      </div>
+
+      <div class="price-card" style="margin-top:0;">
+        <div class="config-row"><div class="label">Tarifa base<small>Cobro fijo por iniciar el viaje</small></div><input type="number" id="cfgBase" value="35" step="1"></div>
+        <div class="config-row"><div class="label">Precio por milla (cliente)<small>Lo que paga el cliente</small></div><input type="number" id="cfgPrecioMilla" value="12" step="0.5"></div>
+        <div class="config-row"><div class="label">Pago al chofer por milla<small>Lo que recibe el chofer</small></div><input type="number" id="cfgPagoMilla" value="7" step="0.5"></div>
+        <div class="config-row"><div class="label">Bono base al chofer<small>Por viaje aceptado</small></div><input type="number" id="cfgBonoChofer" value="15" step="1"></div>
+        <div class="config-row"><div class="label">Cargo por servicio<small>% adicional sobre subtotal</small></div><input type="number" id="cfgServicioPct" value="10" step="1"></div>
+      </div>
+      <div class="save-note" id="saveNote">Los cambios se aplican a todos en cuanto los guardas.</div>
+      <button class="btn-primary" id="btnGuardarConfig" style="margin-top:12px;">Guardar tarifas</button>
+
+      <div class="divider-label">Viajes recientes</div>
+      <div id="listaAdminViajes"></div>
+    </section>
+
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab-btn active" data-view="cliente">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l2-6h14l2 6"></path><rect x="3" y="12" width="18" height="6" rx="1"></rect><circle cx="7" cy="18" r="1.5"></circle><circle cx="17" cy="18" r="1.5"></circle></svg>
+      Cliente
+    </button>
+    <button class="tab-btn" data-view="chofer">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path></svg>
+      Chofer
+    </button>
+    <button class="tab-btn" data-view="admin">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.2a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.2a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.2a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.2a1.7 1.7 0 00-1.5 1z"></path></svg>
+      Admin
+    </button>
+  </nav>
+
+</div>
+
+<script>
+const destinos = [
+  {name:"Palm Harbor", lat:29.4909, lng:-81.2273},
+  {name:"Cypress Knoll", lat:29.5253, lng:-81.2149},
+  {name:"Pine Grove", lat:29.5588, lng:-81.1928},
+  {name:"Indian Trails", lat:29.4728, lng:-81.1934},
+  {name:"Seminole Woods", lat:29.5480, lng:-81.2591},
+  {name:"Daytona Beach (fuera del radio, ~30 mi)", lat:29.2108, lng:-81.0228},
+];
+const MAX_RADIUS_MI = 20;
+const DEFAULT_ORIGIN = {name:"European Village (ejemplo)", lat:29.5762, lng:-81.2098};
+
+let currentOrigin = DEFAULT_ORIGIN;
+let choferLocation = null;
+let myRideId = null;
+let myClientSessionId = "c_" + Math.random().toString(36).slice(2,9);
+let myDriverSessionId = "d_" + Math.random().toString(36).slice(2,9);
+let choferDisponible = false;
+let pollTimer = null;
+
+function haversineMiles(a, b){
+  const R = 3958.8;
+  const dLat = (b.lat - a.lat) * Math.PI/180;
+  const dLng = (b.lng - a.lng) * Math.PI/180;
+  const lat1 = a.lat * Math.PI/180, lat2 = b.lat * Math.PI/180;
+  const h = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1-h));
+}
+function money(n){ return "$" + (n||0).toFixed(2); }
+function todayKey(){ return new Date().toISOString().slice(0,10); }
+
+// ---------- Storage helpers (shared = todos los dispositivos ven lo mismo) ----------
+async function getShared(key, fallback){
+  try{
+    const r = await window.storage.get(key, true);
+    return r ? JSON.parse(r.value) : fallback;
+  }catch(e){ return fallback; }
+}
+async function setShared(key, value){
+  try{ await window.storage.set(key, JSON.stringify(value), true); }catch(e){ console.error(e); }
+}
+
+async function getConfig(){
+  return await getShared('pricing-config', {base:35, precioMilla:12, pagoMilla:7, bonoChofer:15, servicioPct:10});
+}
+async function getRides(){
+  return await getShared('rides-' + todayKey(), []);
+}
+async function saveRides(rides){
+  await setShared('rides-' + todayKey(), rides);
+}
+async function getDrivers(){
+  return await getShared('drivers-online', []);
+}
+async function saveDrivers(drivers){
+  await setShared('drivers-online', drivers);
+}
+
+// ---------- CLIENTE ----------
+async function calcularCliente(){
+  const cfg = await getConfig();
+  const o = currentOrigin;
+  const d = destinos[document.getElementById('destino').value];
+  const millas = Math.max(0.8, haversineMiles(o, d)) * 1.3;
+  const fueraDeRadio = millas > MAX_RADIUS_MI;
+
+  const distanciaCosto = millas * cfg.precioMilla;
+  const subtotal = cfg.base + distanciaCosto;
+  const servicio = subtotal * (cfg.servicioPct/100);
+  const total = subtotal + servicio;
+
+  document.getElementById('distanciaTxt').value = millas.toFixed(1) + " millas · ~" + Math.round(millas*4) + " min en auto";
+  document.getElementById('pBase').textContent = money(cfg.base);
+  document.getElementById('pMillas').textContent = millas.toFixed(1);
+  document.getElementById('pDistancia').textContent = money(distanciaCosto);
+  document.getElementById('pServicio').textContent = money(servicio);
+  document.getElementById('pTotal').textContent = money(total);
+
+  const warning = document.getElementById('radiusWarning');
+  const btn = document.getElementById('btnSolicitar');
+  if(fueraDeRadio){
+    warning.classList.add('show');
+    btn.disabled = true;
+  } else {
+    warning.classList.remove('show');
+    btn.disabled = !!myRideId;
+  }
+  return {millas, total, cfg, o, d};
+}
+
+async function solicitarChofer(){
+  const nombre = document.getElementById('clienteNombre').value.trim() || "Cliente";
+  const {millas, total, cfg, o, d} = await calcularCliente();
+  const pagoChofer = millas * cfg.pagoMilla + cfg.bonoChofer;
+
+  const ride = {
+    id: myClientSessionId + "_" + Date.now(),
+    clienteId: myClientSessionId,
+    clienteNombre: nombre,
+    origen: o, destino: d,
+    millas: Number(millas.toFixed(1)),
+    total: Number(total.toFixed(2)),
+    pagoChofer: Number(pagoChofer.toFixed(2)),
+    estado: 'pendiente',
+    choferId: null, choferNombre: null,
+    creadoEn: Date.now()
+  };
+  const rides = await getRides();
+  rides.push(ride);
+  await saveRides(rides);
+  myRideId = ride.id;
+
+  document.getElementById('btnSolicitar').disabled = true;
+  document.getElementById('btnSolicitar').textContent = "Solicitud enviada";
+  document.getElementById('clienteStatusCard').style.display = 'block';
+  document.getElementById('btnCancelarSolicitud').style.display = 'block';
+  refrescarEstadoCliente();
+}
+
+async function refrescarEstadoCliente(){
+  if(!myRideId) return;
+  const rides = await getRides();
+  const ride = rides.find(r => r.id === myRideId);
+  if(!ride) return;
+  const tag = document.getElementById('clienteStatusTag');
+  const headline = document.getElementById('clienteStatusHeadline');
+  const sub = document.getElementById('clienteStatusSub');
+  if(ride.estado === 'pendiente'){
+    tag.innerHTML = '<span class="loading-dot"></span>Buscando chofer disponible...';
+    headline.textContent = "Tu solicitud está activa";
+    sub.textContent = "Te avisamos aquí en cuanto un chofer la acepte.";
+  } else if(ride.estado === 'aceptado'){
+    tag.textContent = "Chofer asignado";
+    headline.textContent = ride.choferNombre + " va en camino";
+    sub.textContent = "Bicicleta plegable, chaleco reflectivo. Escanea su QR al llegar.";
+  } else if(ride.estado === 'completado'){
+    tag.textContent = "Viaje completado";
+    headline.textContent = "Llegaste con bien";
+    sub.textContent = "Gracias por usar Chofer Asignado.";
+  }
+}
+
+function cancelarSolicitud(){
+  myRideId = null;
+  document.getElementById('clienteStatusCard').style.display = 'none';
+  document.getElementById('btnCancelarSolicitud').style.display = 'none';
+  document.getElementById('btnSolicitar').disabled = false;
+  document.getElementById('btnSolicitar').textContent = "Solicitar chofer asignado";
+}
+
+function usarGPS(){
+  const statusEl = document.getElementById('gpsStatus');
+  const labelEl = document.getElementById('gpsLabel');
+  const btn = document.getElementById('btnGPS');
+  if(!navigator.geolocation){
+    statusEl.textContent = "Tu navegador no soporta geolocalización. Usando ubicación de ejemplo.";
+    return;
+  }
+  labelEl.textContent = "Ubicando...";
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      currentOrigin = {name:"Mi ubicación actual", lat:pos.coords.latitude, lng:pos.coords.longitude};
+      labelEl.textContent = "Ubicación detectada";
+      btn.classList.add('located');
+      statusEl.textContent = "Lat " + pos.coords.latitude.toFixed(4) + ", Lng " + pos.coords.longitude.toFixed(4);
+      calcularCliente();
+    },
+    (err)=>{
+      labelEl.textContent = "Usar mi ubicación (GPS)";
+      statusEl.textContent = "No se pudo obtener tu ubicación (" + err.message + "). Usando ubicación de ejemplo.";
+    },
+    { enableHighAccuracy:true, timeout:8000 }
+  );
+}
+
+// ---------- CHOFER ----------
+async function toggleDisponible(){
+  choferDisponible = !choferDisponible;
+  const sw = document.getElementById('switchDisponible');
+  const statusEl = document.getElementById('gpsStatusChofer');
+  sw.classList.toggle('on', choferDisponible);
+
+  if(choferDisponible){
+    if(navigator.geolocation){
+      statusEl.textContent = "Obteniendo tu ubicación...";
+      navigator.geolocation.getCurrentPosition(async (pos)=>{
+        choferLocation = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+        statusEl.textContent = "Ubicación compartida · listo para recibir viajes";
+        await actualizarChoferEnLista(true);
+        renderSolicitudes();
+      }, async (err)=>{
+        choferLocation = {lat: DEFAULT_ORIGIN.lat, lng: DEFAULT_ORIGIN.lng};
+        statusEl.textContent = "Sin GPS (" + err.message + "), usando ubicación de ejemplo";
+        await actualizarChoferEnLista(true);
+        renderSolicitudes();
+      }, { enableHighAccuracy:true, timeout:8000 });
+    } else {
+      choferLocation = {lat: DEFAULT_ORIGIN.lat, lng: DEFAULT_ORIGIN.lng};
+      statusEl.textContent = "Sin GPS disponible, usando ubicación de ejemplo";
+      await actualizarChoferEnLista(true);
+    }
+  } else {
+    statusEl.textContent = "Desactivado — no recibirás solicitudes";
+    await actualizarChoferEnLista(false);
+    document.getElementById('listaSolicitudes').innerHTML = '';
+  }
+}
+
+async function actualizarChoferEnLista(online){
+  const nombre = document.getElementById('choferNombre').value.trim() || "Chofer";
+  let drivers = await getDrivers();
+  drivers = drivers.filter(d => d.id !== myDriverSessionId);
+  if(online){
+    drivers.push({id: myDriverSessionId, name: nombre, lat: choferLocation.lat, lng: choferLocation.lng, updatedAt: Date.now()});
+  }
+  await saveDrivers(drivers);
+}
+
+async function renderSolicitudes(){
+  const cont = document.getElementById('listaSolicitudes');
+  if(!choferDisponible){ return; }
+  const rides = await getRides();
+  const pendientes = rides.filter(r => r.estado === 'pendiente');
+
+  if(pendientes.length === 0){
+    cont.innerHTML = '<div class="empty-state">No hay solicitudes pendientes cerca de ti todavía.<br>Te avisamos en cuanto llegue una.</div>';
+    return;
+  }
+  cont.innerHTML = pendientes.map(r => {
+    const dist = choferLocation ? haversineMiles(choferLocation, r.origen).toFixed(1) : '?';
+    return `<div class="ride-card">
+      <div class="top-row">
+        <div>
+          <div style="font-family:'Oswald',sans-serif;font-weight:600;font-size:14px;">${r.clienteNombre}</div>
+          <div class="meta">${dist} mi hasta el punto de partida · ${r.millas} mi de viaje</div>
+        </div>
+        <div class="fare">${money(r.pagoChofer)}</div>
+      </div>
+      <div class="addr">
+        <div class="from">${r.origen.name}</div>
+        <div class="to">${r.destino.name}</div>
+      </div>
+      <button class="btn-accept" data-ride="${r.id}">Aceptar viaje</button>
+    </div>`;
+  }).join('');
+
+  cont.querySelectorAll('.btn-accept').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const rideId = btn.dataset.ride;
+      const nombre = document.getElementById('choferNombre').value.trim() || "Chofer";
+      let rides = await getRides();
+      const idx = rides.findIndex(r => r.id === rideId);
+      if(idx === -1 || rides[idx].estado !== 'pendiente'){ renderSolicitudes(); return; }
+      rides[idx].estado = 'aceptado';
+      rides[idx].choferId = myDriverSessionId;
+      rides[idx].choferNombre = nombre;
+      await saveRides(rides);
+      renderSolicitudes();
+      renderGananciasChofer();
+    });
+  });
+}
+
+async function renderGananciasChofer(){
+  const rides = await getRides();
+  const mios = rides.filter(r => r.choferId === myDriverSessionId && (r.estado === 'aceptado' || r.estado === 'completado'));
+  const total = mios.reduce((s,r)=> s + r.pagoChofer, 0);
+  document.getElementById('choferGanadoHoy').textContent = money(total);
+  document.getElementById('choferViajesHoy').textContent = mios.length;
+}
+
+// ---------- ADMIN ----------
+async function cargarConfigEnFormulario(){
+  const cfg = await getConfig();
+  document.getElementById('cfgBase').value = cfg.base;
+  document.getElementById('cfgPrecioMilla').value = cfg.precioMilla;
+  document.getElementById('cfgPagoMilla').value = cfg.pagoMilla;
+  document.getElementById('cfgBonoChofer').value = cfg.bonoChofer;
+  document.getElementById('cfgServicioPct').value = cfg.servicioPct;
+}
+async function guardarConfig(){
+  const cfg = {
+    base: parseFloat(document.getElementById('cfgBase').value) || 0,
+    precioMilla: parseFloat(document.getElementById('cfgPrecioMilla').value) || 0,
+    pagoMilla: parseFloat(document.getElementById('cfgPagoMilla').value) || 0,
+    bonoChofer: parseFloat(document.getElementById('cfgBonoChofer').value) || 0,
+    servicioPct: parseFloat(document.getElementById('cfgServicioPct').value) || 0,
+  };
+  await setShared('pricing-config', cfg);
+  const note = document.getElementById('saveNote');
+  note.textContent = "Guardado. Ya aplica para todos.";
+  setTimeout(()=>{ note.textContent = "Los cambios se aplican a todos en cuanto los guardas."; }, 2500);
+  calcularCliente();
+}
+
+async function renderAdmin(){
+  const rides = await getRides();
+  const drivers = await getDrivers();
+  const onlineDrivers = drivers.filter(d => Date.now() - d.updatedAt < 5*60*1000);
+  const completadosOAceptados = rides.filter(r => r.estado !== 'pendiente' || true); // todos cuentan como actividad
+  const ingresos = rides.reduce((s,r)=> s + (r.estado !== 'pendiente' ? r.total : 0), 0);
+  const costosChofer = rides.reduce((s,r)=> s + (r.estado !== 'pendiente' ? r.pagoChofer : 0), 0);
+  const margen = ingresos > 0 ? ((ingresos - costosChofer)/ingresos*100) : 0;
+
+  document.getElementById('statViajesHoy').textContent = rides.length;
+  document.getElementById('statChoferesOnline').textContent = onlineDrivers.length;
+  document.getElementById('statIngresos').textContent = money(ingresos);
+  document.getElementById('statMargen').textContent = margen.toFixed(0) + "%";
+
+  const cont = document.getElementById('listaAdminViajes');
+  if(rides.length === 0){
+    cont.innerHTML = '<div class="empty-state">Todavía no hay viajes registrados hoy.</div>';
+    return;
+  }
+  const ordenados = [...rides].sort((a,b)=> b.creadoEn - a.creadoEn);
+  cont.innerHTML = ordenados.slice(0,15).map(r=>{
+    const estadoTxt = {pendiente:'Pendiente', aceptado:'En curso', completado:'Completado'}[r.estado] || r.estado;
+    return `<div class="ride-card">
+      <div class="top-row">
+        <div>
+          <div style="font-family:'Oswald',sans-serif;font-weight:600;font-size:13.5px;">${r.clienteNombre} → ${r.choferNombre || 'sin asignar'}</div>
+          <div class="meta">${estadoTxt} · ${r.millas} mi</div>
+        </div>
+        <div class="fare">${money(r.total)}</div>
+      </div>
+      <div class="addr">
+        <div class="from">${r.origen.name}</div>
+        <div class="to">${r.destino.name}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function correrDiagnostico(){
+  const out = document.getElementById('diagResultado');
+  out.innerHTML = "Probando...";
+  const lineas = [];
+
+  // Prueba 1: storage privado (shared=false)
+  try{
+    await window.storage.set('diag-test', JSON.stringify({t: Date.now()}), false);
+    const r1 = await window.storage.get('diag-test', false);
+    lineas.push("✅ Guardado privado: funciona");
+  }catch(e){
+    lineas.push("❌ Guardado privado: falló — " + e.message);
+  }
+
+  // Prueba 2: storage compartido (shared=true)
+  try{
+    await window.storage.set('diag-test-shared', JSON.stringify({t: Date.now()}), true);
+    const r2 = await window.storage.get('diag-test-shared', true);
+    lineas.push("✅ Guardado compartido: funciona");
+  }catch(e){
+    lineas.push("❌ Guardado compartido: falló — " + e.message);
+  }
+
+  out.innerHTML = lineas.join("<br>");
+}
+document.getElementById('btnDiagnostico').addEventListener('click', correrDiagnostico);
+
+// ---------- Tabs & eventos ----------
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    if(btn.dataset.view === 'admin'){ cargarConfigEnFormulario(); renderAdmin(); }
+    if(btn.dataset.view === 'chofer'){ renderSolicitudes(); renderGananciasChofer(); }
+  });
+});
+
+document.getElementById('destino').addEventListener('change', calcularCliente);
+document.getElementById('btnGPS').addEventListener('click', usarGPS);
+document.getElementById('btnSolicitar').addEventListener('click', solicitarChofer);
+document.getElementById('btnCancelarSolicitud').addEventListener('click', cancelarSolicitud);
+document.getElementById('switchDisponible').addEventListener('click', toggleDisponible);
+document.getElementById('btnGuardarConfig').addEventListener('click', guardarConfig);
+
+// Poll cada 4s para sincronizar entre dispositivos
+pollTimer = setInterval(()=>{
+  refrescarEstadoCliente();
+  if(choferDisponible) renderSolicitudes();
+  if(document.getElementById('view-admin').classList.contains('active')) renderAdmin();
+}, 4000);
+
+calcularCliente();
+cargarConfigEnFormulario();
+</script>
+</body>
+</html>
